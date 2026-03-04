@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión Académica - BACHILLERATO - Nieves Cortes Picón</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        :root { 
+            --primary: #0f172a; --primary-hover: #334155; --sidebar: #0f172a; --bg: #f8fafc;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --text-main: #334155; --border: #cbd5e1;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; color: var(--text-main); }
+
+        .sidebar { width: 330px; background: var(--sidebar); color: white; padding: 25px 20px; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 10; overflow-y: auto; }
+        .sidebar h2 { font-size: 15px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .config-panel { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #475569; }
+        .config-panel label { font-size: 11px; color: #94a3b8; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .config-select { width: 100%; padding: 8px; font-size: 13px; border-radius: 4px; border: 1px solid #475569; background: #334155; color: white; margin-bottom: 10px; outline: none; font-family: inherit; }
+        
+        .stats-panel { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; border: 1px solid #334155; }
+        .stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .stat-val { font-weight: bold; }
+
+        .student-list { flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
+        .student-item { padding: 12px 15px; background: rgba(255,255,255,0.1); margin-bottom: 8px; cursor: pointer; border-radius: 8px; font-size: 13px; transition: all 0.2s ease; display: flex; justify-content: space-between; align-items: center; }
+        .student-item:hover { background: rgba(255,255,255,0.15); transform: translateX(5px); }
+        .student-item.active { background: #334155; border-left: 4px solid #60a5fa; }
+        .btn-delete-small { background: transparent; border: none; color: #fca5a5; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        
+        .main-content { flex: 1; padding: 25px 25px 100px 25px; overflow-y: auto; }
+        .toolbar { width: 21.59cm; margin: 0 auto 25px auto; background: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
+        .toolbar-group { display: flex; gap: 10px; }
+
+        .page { width: 21.59cm; min-height: 27.94cm; margin: 0 auto 30px auto; padding: 1.5cm; background: white; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative; display: none; border: 1px solid var(--border); }
+        .page.active-page { display: block; }
+        body.zoom-active .page { transform: scale(1.05); transform-origin: top center; margin-bottom: 80px; }
+
+        .header-container { display: flex; align-items: center; border-bottom: 3px solid #334155; margin-bottom: 15px; padding-bottom: 10px; }
+        .escudo-img { width: 80px; height: 80px; object-fit: contain; margin-right: 20px; }
+        .header-text h1 { margin: 0 0 5px 0; font-size: 22px; color: #334155; text-transform: uppercase; }
+        .header-text p { margin: 0; font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0.5px; }
+
+        .info-grid { display: grid; grid-template-columns: 2.5fr 1fr 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
+        .info-grid div { font-size: 12px; font-weight: 700; color: #475569; display: flex; flex-direction: column; gap: 5px; }
+        .info-grid input { border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; font-family: inherit; font-size: 12px; outline: none; }
+        .info-grid .read-only-text { border: none; background: transparent; font-size: 14px; color: #334155; font-weight: bold; padding: 4px 0; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { background: #f1f5f9; border: 1px solid var(--border); padding: 8px; font-size: 11px; color: #475569; }
+        td { border: 1px solid var(--border); padding: 4px 6px; font-size: 10.5px; vertical-align: middle; }
+        .nota-input { width: 45px; text-align: center; font-weight: bold; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; padding: 4px; }
+        .bajo { background: #fee2e2 !important; color: #991b1b; } .basico { background: #fef3c7 !important; color: #92400e; }
+        .alto { background: #dcfce7 !important; color: #166534; } .superior { background: #dbeafe !important; color: #1e40af; }
+        textarea { width: 100%; height: 50px; border: none; font-size: 9.5px; resize: none; overflow: hidden; font-family: inherit; line-height: 1.3; background: transparent; text-align: justify; }
+
+        .observaciones-box { margin-top: 15px; border: 1px solid var(--border); padding: 12px; border-radius: 6px; background: #f8fafc; }
+        .obs-title { font-weight: bold; font-size: 11px; color: #334155; margin-bottom: 8px; text-transform: uppercase; }
+        .obs-select { width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: inherit; }
+        .obs-custom { display: none; width: 100%; height: 50px; margin-top: 8px; padding: 8px; border: 1px dashed #334155; font-size: 11px; resize: none; outline: none; }
+
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 50px; }
+        .sig-box { border-top: 1px solid #475569; text-align: center; padding-top: 8px; font-weight: bold; font-size: 11px; color: #475569; }
+
+        .btn { cursor: pointer; border: none; border-radius: 6px; font-weight: 600; padding: 10px 16px; font-size: 12px; display: flex; justify-content: center; gap: 8px; }
+        .btn-add { background: var(--success); color: white; width: 100%; margin-bottom: 10px; padding: 12px; }
+        .btn-chart { background: #8b5cf6; color: white; width: 100%; margin-bottom: 15px; }
+        .btn-excel { background: #10b981; color: white; }
+        .btn-zoom { background: #64748b; color: white; }
+        .btn-print-all { background: var(--warning); color: white; width: 100%; margin-top: 10px; }
+        .btn-print-one { background: #334155; color: white; }
+
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: translateX(120%); transition: 0.3s; border-left: 5px solid #334155; }
+        .toast.show { transform: translateX(0); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 700px; max-width: 95%; text-align: center; }
+        
+        @media print {
+            @page { size: letter portrait; margin: 0; }
+            html, body { display: block !important; height: auto !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+            .sidebar, .toolbar, .no-print, .toast-container, .modal-overlay { display: none !important; }
+            .main-content { display: block !important; padding: 0 !important; overflow: visible !important; }
+            #contenedorBoletines { display: block !important; }
+            .page { position: relative !important; border: none !important; margin: 0 !important; padding: 1.5cm !important; page-break-after: always !important; height: auto !important; width: 100% !important; box-shadow: none !important;}
+            body.print-mode-all .page { display: block !important; }
+            body.print-mode-single .page { display: none !important; }
+            body.print-mode-single .page.active-page { display: block !important; }
+            textarea { height: auto; }
+            .info-grid { border: none; padding: 0; background: transparent;}
+            select { appearance: none; border: none; background: transparent; }
+            .obs-select, .obs-custom { border: none !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="modal-overlay" id="modalConfirmar"><div class="modal-content" style="width: 400px;"><h3>⚠️ ¿Eliminar Estudiante?</h3><div style="display:flex;gap:15px;justify-content:center"><button class="btn" onclick="cerrarModal('modalConfirmar')">Cancelar</button><button class="btn" style="background:var(--danger);color:white" onclick="ejecutarEliminacion()">Eliminar</button></div></div></div>
+<div class="modal-overlay" id="modalEstadistica"><div class="modal-content"><h3>📊 Estadísticas: Pérdidas</h3><div style="height:300px"><canvas id="graficoPerdidas"></canvas></div><button class="btn" style="margin-top:20px; background:var(--danger); color:white;" onclick="cerrarModal('modalEstadistica')">Cerrar</button></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="sidebar no-print">
+    <h2>Nieves Cortes Picón - Bachillerato</h2>
+    <div class="config-panel">
+        <label>Grado del Grupo:</label>
+        <select id="gradoGlobal" class="config-select" onchange="actualizarCursosGlobales()">
+            <option value="">-- Seleccione Grado --</option>
+            <option value="6">6° Grado</option><option value="7">7° Grado</option>
+            <option value="8">8° Grado</option><option value="9">9° Grado</option>
+            <option value="10">10° Grado</option><option value="11">11° Grado</option>
+        </select>
+        <label>Curso del Grupo:</label>
+        <select id="cursoGlobal" class="config-select" onchange="guardarConfiguracion()"><option value="-">-- Seleccione --</option></select>
+    </div>
+    <div class="stats-panel">
+        <div class="stat-item">Total Alumnos: <span id="statTotal" class="stat-val">0</span></div>
+        <div class="stat-item">Aprobados: <span id="statApro" class="stat-val" style="color:#4ade80">0</span></div>
+        <div class="stat-item">Reprobados: <span id="statRepro" class="stat-val" style="color:#fca5a5">0</span></div>
+    </div>
+    <button class="btn btn-add" onclick="nuevoEstudiante()">➕ Nuevo Estudiante</button>
+    <button class="btn btn-chart" onclick="abrirEstadisticas()">📈 Estudio Estadístico</button>
+    <div class="student-list" id="listaSidebar"></div>
+    <button class="btn btn-print-all" onclick="imprimirTodo()">🖨️ IMPRIMIR TODO</button>
+    <button class="btn btn-excel" onclick="exportarExcel()" style="width:100%; margin-top: 10px;">📉 Descargar Excel</button>
+</div>
+
+<div class="main-content">
+    <div class="toolbar no-print">
+        <span id="txtEditando" style="font-weight: 700; color: #334155;">Bienvenido a Bachillerato</span>
+        <div class="toolbar-group"><button class="btn btn-zoom" onclick="toggleZoom()">🔍 Aumentar</button><button class="btn btn-print-one" onclick="imprimirActual()">🖨️ Imprimir Actual</button></div>
+    </div>
+    <div id="contenedorBoletines"></div>
+</div>
+
+<script>
+    const materiasSecundaria = ["Lengua Castellana", "Plan Lector", "Inglés", "Matemáticas", "Geometría", "Biología", "Física", "Química", "Sociales", "Informática", "Educación Física", "Ética y Religión", "Ajedrez / Cátedra de la Paz", "Artística", "Convivencia"];
+    const materiasMedia = ["Lengua Castellana", "Plan Lector", "Inglés", "Matemáticas", "Geometría", "Biología", "Física", "Química", "Sociales", "Informática", "Educación Física", "Ética y Religión", "Ajedrez / Cátedra de la Paz", "Artística", "Convivencia", "Gestión Ambiental", "Ciencias Económicas", "Ciencias Políticas", "Ciencias Sociales", "Cátedra de la Paz"];
+    
+    function obtenerMaterias(g) { return parseInt(g) >= 10 ? materiasMedia : materiasSecundaria; }
+
+    let studentCount = 0; let estudianteAEliminar = null; let chartInstance = null;
+
+    function mostrarToast(msg) { const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className='toast'; t.innerText=msg; c.appendChild(t); setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); setTimeout(()=>t.remove(),300)},3000); }
+    function toggleZoom() { document.body.classList.toggle('zoom-active'); }
+    function imprimirActual() { document.body.className = 'print-mode-single'; window.print(); }
+    function imprimirTodo() { document.body.className = 'print-mode-all'; window.print(); }
+    function actualizarCursosGlobales() { const g = document.getElementById('gradoGlobal').value; const c = document.getElementById('cursoGlobal'); c.innerHTML='<option value="-">-- Seleccione --</option>'; if(g){for(let i=1;i<=4;i++) c.innerHTML+=`<option value="${g}-${i}">${g}-${i}</option>`;} guardarConfiguracion(); }
+    function guardarConfiguracion() { localStorage.setItem('configBachi', JSON.stringify({ g: document.getElementById('gradoGlobal').value, c: document.getElementById('cursoGlobal').value })); }
+    function cargarConfiguracion() { const conf = JSON.parse(localStorage.getItem('configBachi')||'{}'); if(conf.g){ document.getElementById('gradoGlobal').value=conf.g; actualizarCursosGlobales(); document.getElementById('cursoGlobal').value=conf.c; } }
+    
+    function nuevoEstudiante() {
+        const g = document.getElementById('gradoGlobal').value; const c = document.getElementById('cursoGlobal').value;
+        if (!g || c==="-") return mostrarToast("Seleccione Grado y Curso.");
+        studentCount++; const id = `est_${Date.now()}`;
+        document.getElementById('listaSidebar').insertAdjacentHTML('beforeend', `<div class="student-item" id="side_${id}" onclick="alternarEstudiante('${id}')"><div style="flex:1"><strong class="side-name">Nuevo Alumno</strong><br><small id="promSide_${id}">Promedio: 0.0</small></div><button class="btn-delete-small" onclick="confirmarEliminar('${id}', event)">🗑️</button></div>`);
+        
+        const htmlBoletin = `<div class="page" id="${id}">
+            <div class="header-container"><img src="https://q.plataformaintegra.net/nievescortes/img/colegio/escudo_auth.jpg" class="escudo-img"><div class="header-text"><h1>Colegio Nieves Cortes Picón</h1><p>REPORTE DE RENDIMIENTO - BACHILLERATO - PERIODO I - 2026</p></div></div>
+            <div class="info-grid">
+                <div>ESTUDIANTE: <input type="text" class="inp-nombre" oninput="actNombre('${id}', this.value); guardarDatos()"></div>
+                <div>GRADO: <input type="text" class="read-only-text hidden-grado" value="${g}" readonly></div>
+                <div>CURSO: <input type="text" class="read-only-text hidden-curso" value="${c}" readonly></div>
+                <div>PUESTO: <input type="text" class="inp-puesto read-only-text" readonly></div>
+            </div>
+            <table><thead><tr><th width="18%">ASIGNATURA</th><th width="8%">NOTA</th><th width="14%">DESEMPEÑO</th><th width="60%">DESCRIPCIÓN DE LOGROS</th></tr></thead><tbody class="tabla-body"></tbody></table>
+            
+            <div class="observaciones-box">
+                <div class="obs-title">Observaciones Disciplinarias y Generales</div>
+                <select class="obs-select" onchange="manejarObs('${id}', this)" required>
+                    <option value="" disabled selected>-- Seleccione una observación --</option>
+                    <optgroup label="✅ Observaciones Académicas">
+                        <option value="Su compromiso académico es excelente. Se nota gran esfuerzo. ¡Siga así!">Su compromiso académico es excelente. Se nota gran esfuerzo. ¡Siga así!</option>
+                        <option value="Desempeño académico satisfactorio, pero se sugiere repasar temas en casa.">Desempeño académico satisfactorio, pero se sugiere repasar temas en casa.</option>
+                        <option value="Debe mejorar su dedicación y cumplimiento en la entrega de tareas asignadas.">Debe mejorar su dedicación y cumplimiento en la entrega de tareas asignadas.</option>
+                        <option value="Bajo rendimiento académico. Urge acompañamiento familiar para nivelación.">Bajo rendimiento académico. Urge acompañamiento familiar para nivelación.</option>
+                    </optgroup>
+                    <optgroup label="⚠️ Observaciones Disciplinarias">
+                        <option value="Su comportamiento y respeto en el aula son ejemplares.">Su comportamiento y respeto en el aula son ejemplares.</option>
+                        <option value="Buen comportamiento en general, pero en ocasiones se distrae fácilmente.">Buen comportamiento en general, pero en ocasiones se distrae fácilmente.</option>
+                        <option value="Debe mejorar su disciplina, evitar interrupciones y acatar las normas de convivencia.">Debe mejorar su disciplina, evitar interrupciones y acatar las normas de convivencia.</option>
+                        <option value="Presenta constantes faltas de respeto y llamados de atención graves.">Presenta constantes faltas de respeto y llamados de atención graves.</option>
+                    </optgroup>
+                    <optgroup label="🔄 Observaciones Mixtas">
+                        <option value="Buen rendimiento, pero debe mejorar significativamente su comportamiento en clase.">Buen rendimiento, pero debe mejorar significativamente su comportamiento en clase.</option>
+                        <option value="Excelente disciplina y respeto, pero requiere más esfuerzo en la parte académica.">Excelente disciplina y respeto, pero requiere más esfuerzo en la parte académica.</option>
+                    </optgroup>
+                    <optgroup label="✍️ Personalizada">
+                        <option value="custom">Escribir observación propia...</option>
+                    </optgroup>
+                </select>
+                <textarea class="obs-custom" placeholder="Escriba aquí la observación personalizada..." oninput="guardarDatos()"></textarea>
+            </div>
+
+            <div class="signatures"><div class="sig-box">FIRMA DIRECTOR DE GRUPO</div><div class="sig-box">FIRMA COORDINACIÓN ACADÉMICA</div></div></div>`;
+        document.getElementById('contenedorBoletines').insertAdjacentHTML('beforeend', htmlBoletin);
+        generarMaterias(id, g); alternarEstudiante(id); guardarDatos();
+    }
+
+    function generarMaterias(id, g) {
+        const tb = document.querySelector(`#${id} .tabla-body`); tb.innerHTML = "";
+        obtenerMaterias(g).forEach((m, i) => { tb.innerHTML += `<tr><td><strong>${m}</strong></td><td align="center"><input type="number" class="nota-input" onchange="validarNota(this,'${id}',${i},'${m}', '${g}')"></td><td align="center" class="val-txt">-</td><td><textarea class="logro-txt" readonly></textarea></td></tr>`; });
+    }
+    
+    function manejarObs(id, sel) { const txt = document.querySelector(`#${id} .obs-custom`); if(sel.value==='custom'){txt.style.display='block'; sel.classList.add('no-print');}else{txt.style.display='none'; txt.value=''; sel.classList.remove('no-print');} guardarDatos(); }
+    
+    function validarNota(inp, id, idx, m, g) {
+        let v = parseInt(inp.value); if(!inp.value){ limpiarFila(id,idx); return;}
+        if(v>50) v=50; else if(v<10) { inp.value=""; return limpiarFila(id,idx); }
+        inp.value=v; const f = document.querySelectorAll(`#${id} .tabla-body tr`)[idx];
+        let nivel = v>=46?"superior":v>=40?"alto":v>=30?"basico":"bajo";
+        f.querySelector('.val-txt').innerText = nivel.toUpperCase(); f.querySelector('.val-txt').className="val-txt "+nivel; f.querySelector('.nota-input').className="nota-input "+nivel;
+        
+        const logros = {
+            "superior": `Demuestra un nivel de excelencia y un dominio superior en las competencias de ${m}. Analiza, argumenta y propone soluciones de manera crítica y autónoma.`,
+            "alto": `Desarrolla satisfactoriamente las competencias del área de ${m}, evidenciando un buen nivel de comprensión y aplicación de los conceptos.`,
+            "basico": `Alcanza los desempeños mínimos requeridos en las competencias de ${m}. Se sugiere mayor compromiso y mejorar sus hábitos de estudio.`,
+            "bajo": `Presenta serias dificultades para alcanzar las competencias propuestas para ${m}. Es de carácter urgente establecer un plan de mejoramiento.`
+        };
+        
+        f.querySelector('.logro-txt').value = logros[nivel]; actualizarGlobal(); guardarDatos();
+    }
+    function limpiarFila(id, idx) { const f = document.querySelectorAll(`#${id} .tabla-body tr`)[idx]; f.querySelector('.val-txt').innerText="-"; f.querySelector('.val-txt').className="val-txt"; f.querySelector('.nota-input').className="nota-input"; f.querySelector('.logro-txt').value=""; actualizarGlobal(); }
+    
+    function actualizarGlobal() {
+        const bols = Array.from(document.querySelectorAll('.page')); let proms = [];
+        bols.forEach(b => {
+            const ns = Array.from(b.querySelectorAll('.nota-input')); let s=0, c=0;
+            ns.forEach(i => { if(i.value){s+=parseFloat(i.value); c++;} }); let p = c>0?s/c:0;
+            proms.push({id: b.id, p}); document.getElementById(`promSide_${b.id}`).innerText = `Promedio: ${p.toFixed(1)}`;
+        });
+        proms.sort((a,b)=>b.p-a.p); proms.forEach((x,i)=>{ if(x.p>0) document.querySelector(`#${x.id} .inp-puesto`).value=`${i+1}°`; });
+        const apro = proms.filter(x=>x.p>=30).length;
+        document.getElementById('statTotal').innerText = bols.length; document.getElementById('statApro').innerText = apro; document.getElementById('statRepro').innerText = bols.length - apro;
+    }
+
+    function alternarEstudiante(id) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active-page')); document.querySelectorAll('.student-item').forEach(i=>i.classList.remove('active')); document.getElementById(id).classList.add('active-page'); document.getElementById(`side_${id}`).classList.add('active'); document.getElementById('txtEditando').innerText = `Editando: `+(document.querySelector(`#${id} .inp-nombre`).value||"Nuevo"); }
+    function actNombre(id, val) { document.querySelector(`#side_${id} .side-name`).textContent = val||"Nuevo"; document.getElementById('txtEditando').innerText=`Editando: `+(val||"Nuevo"); }
+    
+    function confirmarEliminar(id, e){ e.stopPropagation(); estudianteAEliminar=id; document.getElementById('modalConfirmar').style.display='flex'; }
+    function cerrarModal(id){ document.getElementById(id).style.display='none'; }
+    function ejecutarEliminacion(){ document.getElementById(estudianteAEliminar).remove(); document.getElementById(`side_${estudianteAEliminar}`).remove(); studentCount--; const ps=document.querySelectorAll('.page'); if(ps.length>0) alternarEstudiante(ps[ps.length-1].id); actualizarGlobal(); guardarDatos(); cerrarModal('modalConfirmar'); }
+    
+    function abrirEstadisticas() {
+        const g = document.getElementById('gradoGlobal').value; if(!g) return mostrarToast("Configure el grado primero");
+        document.getElementById('modalEstadistica').style.display='flex'; const m = obtenerMaterias(g); let per=new Array(m.length).fill(0);
+        document.querySelectorAll('.page').forEach(p=>{ p.querySelectorAll('.nota-input').forEach((i,idx)=>{ if(i.value>=10 && i.value<30) per[idx]++; }); });
+        const ctx=document.getElementById('graficoPerdidas').getContext('2d'); if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, { type:'bar', data:{labels:m, datasets:[{label:'Reprobados', data:per, backgroundColor:'#ef4444'}]} });
+    }
+
+    function guardarDatos() {
+        const d = []; document.querySelectorAll('.page').forEach(p => {
+            const g = p.querySelector('.hidden-grado').value; const m = obtenerMaterias(g); const nts = {};
+            Array.from(p.querySelectorAll('.nota-input')).forEach((i,idx)=>nts[m[idx]]=i.value);
+            d.push({ id: p.id, nom: p.querySelector('.inp-nombre').value, g, c: p.querySelector('.hidden-curso').value, nts, sel: p.querySelector('.obs-select').value, cus: p.querySelector('.obs-custom').value });
+        }); localStorage.setItem('dataBachi', JSON.stringify(d));
+    }
+    
+    function cargarDatos() {
+        cargarConfiguracion(); const d = JSON.parse(localStorage.getItem('dataBachi')||'[]');
+        d.forEach(est => {
+            nuevoEstudiante(); const p=document.getElementById(est.id);
+            p.querySelector('.inp-nombre').value = est.nom; actNombre(est.id, est.nom);
+            const inps = p.querySelectorAll('.nota-input'); const ms = obtenerMaterias(est.g); ms.forEach((m,i)=>{ if(est.nts[m]){ inps[i].value=est.nts[m]; validarNota(inps[i], est.id, i, m, est.g); } });
+            p.querySelector('.obs-select').value=est.sel; p.querySelector('.obs-custom').value=est.cus; manejarObs(est.id, p.querySelector('.obs-select'));
+        });
+    }
+
+    function exportarExcel() {
+        const g = document.getElementById('gradoGlobal').value; if(!g) return mostrarToast("Seleccione grado.");
+        const m = obtenerMaterias(g); let csv = "data:text/csv;charset=utf-8,Nombre,Grado,Curso,Promedio," + m.join(",") + ",Observaciones\n";
+        document.querySelectorAll('.page').forEach(p => {
+            const rs = []; p.querySelectorAll('.nota-input').forEach(i=>rs.push(i.value||"0"));
+            csv += `${p.querySelector('.inp-nombre').value||""},${p.querySelector('.hidden-grado').value},${p.querySelector('.hidden-curso').value},${document.getElementById(`promSide_${p.id}`).innerText.split(" ")[1]},${rs.join(",")},${p.querySelector('.obs-select').value}\n`;
+        });
+        const a = document.createElement("a"); a.href = encodeURI(csv); a.download = `Planilla_Bachi_${g}.csv`; a.click();
+    }
+    cargarDatos();
+</script>
+</body>
+</html>
